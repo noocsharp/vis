@@ -1903,6 +1903,9 @@ int vis_pipe(Vis *vis, File *file, Filerange *range, const char *argv[],
 			}
 		}
 
+		pid_t died = waitpid(pid, &status, WNOHANG);
+		if ((died == -1 && errno == ECHILD) || pid == died)
+			break;
 	} while (pin[1] != -1 || pout[0] != -1 || perr[0] != -1);
 
 err:
@@ -1912,14 +1915,6 @@ err:
 		close(pout[0]);
 	if (perr[0] != -1)
 		close(perr[0]);
-
-	for (;;) {
-		if (vis->interrupted)
-			kill(0, SIGTERM);
-		pid_t died = waitpid(pid, &status, 0);
-		if ((died == -1 && errno == ECHILD) || pid == died)
-			break;
-	}
 
 	/* clear any pending SIGTERM */
 	struct sigaction sigterm_ignore, sigterm_old;
